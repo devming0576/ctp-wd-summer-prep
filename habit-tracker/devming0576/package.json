@@ -1,0 +1,14 @@
+{
+  "name": "habit-tracker-week1",
+  "version": "1.0.0",
+  "description": "Habit Tracker & Wellness Dashboard - Week 1: JavaScript Foundation",
+  "scripts": {
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.0.8"
+  }
+}

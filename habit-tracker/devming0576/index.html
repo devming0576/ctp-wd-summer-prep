@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Habit Tracker - Premium App</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Tailwind Config -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            'system': ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
+          },
+          colors: {
+            'apple-blue': '#007AFF',
+            'apple-green': '#34C759',
+            'apple-red': '#FF3B30',
+            'apple-orange': '#FF9500'
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    .tab-transition {
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    
+    .modal-backdrop {
+      backdrop-filter: blur(10px);
+    }
+    
+    .card-hover {
+      transition: all 0.2s ease-in-out;
+    }
+    
+    .card-hover:hover {
+      transform: translateY(-1px);
+    }
+    
+    .bounce-in {
+      animation: bounceIn 0.3s ease-out;
+    }
+    
+    @keyframes bounceIn {
+      0% { transform: scale(0.8); opacity: 0; }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 2px;
+    }
+    
+    .dark ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    
+    /* Mobile modal improvements */
+    @media (max-height: 700px) {
+      #habit-modal .bounce-in {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+      }
+    }
+    
+    /* Ensure modal content is always accessible */
+    .modal-content {
+      max-height: calc(100vh - 2rem);
+      overflow-y: auto;
+    }
+    
+    /* Better mobile form spacing */
+    @media (max-width: 640px) {
+      #habit-form {
+        padding-bottom: 1rem;
+      }
+    }
+  </style>
+</head>
+
+<body class="font-system bg-gray-100 dark:bg-slate-900 text-gray-900 dark:text-white min-h-screen">
+  <div id="app" class="min-h-screen flex flex-col">
+    
+    <!-- Desktop Header Navigation (hidden on mobile) -->
+    <header class="hidden md:block bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-40">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+          <div class="flex items-center">
+            <h1 class="text-2xl font-bold text-apple-blue">Habit Tracker</h1>
+          </div>
+          <nav class="flex space-x-8">
+            <button class="nav-link text-gray-700 dark:text-gray-300 hover:text-apple-blue dark:hover:text-apple-blue px-3 py-2 rounded-md text-sm font-medium transition-colors" data-view="home">
+              Home
+            </button>
+            <button class="nav-link text-gray-700 dark:text-gray-300 hover:text-apple-blue dark:hover:text-apple-blue px-3 py-2 rounded-md text-sm font-medium transition-colors" data-view="habits">
+              Habits
+            </button>
+            <button class="nav-link text-gray-700 dark:text-gray-300 hover:text-apple-blue dark:hover:text-apple-blue px-3 py-2 rounded-md text-sm font-medium transition-colors" data-view="analytics">
+              Analytics
+            </button>
+            <button class="nav-link text-gray-700 dark:text-gray-300 hover:text-apple-blue dark:hover:text-apple-blue px-3 py-2 rounded-md text-sm font-medium transition-colors" data-view="settings">
+              Settings
+            </button>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 pb-20 md:pb-4">
+      
+      <!-- Home View -->
+      <div id="home-view" class="view-content">
+        <div class="max-w-4xl mx-auto p-4 md:p-6">
+          <div class="mb-6">
+            <h1 class="text-3xl font-bold mb-2 md:hidden">Today</h1>
+            <h1 class="hidden md:block text-3xl font-bold mb-2">Today's Habits</h1>
+            <p class="text-gray-600 dark:text-gray-400" id="today-date"></p>
+          </div>
+          
+          <div id="today-habits" class="space-y-3">
+            <!-- Today's habits will be dynamically rendered here -->
+          </div>
+          
+          <div id="no-habits-today" class="hidden text-center py-12">
+            <div class="text-6xl mb-4">🎯</div>
+            <h3 class="text-xl font-semibold mb-2">No habits scheduled for today</h3>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">Add some habits to get started on your journey!</p>
+            <button onclick="switchView('habits')" class="bg-apple-blue text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-600 transition-colors">
+              Add Your First Habit
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Habits View -->
+      <div id="habits-view" class="view-content hidden">
+        <div class="max-w-4xl mx-auto p-4 md:p-6">
+          <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold">All Habits</h1>
+            <button id="add-habit-btn" class="bg-apple-blue text-white p-3 rounded-xl hover:bg-blue-600 transition-colors shadow-lg">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <div id="habits-list" class="space-y-4">
+            <!-- Habits will be dynamically rendered here -->
+          </div>
+          
+          <div id="no-habits" class="hidden text-center py-12">
+            <div class="text-6xl mb-4">📝</div>
+            <h3 class="text-xl font-semibold mb-2">No habits yet</h3>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">Create your first habit to start building better routines</p>
+            <button id="add-first-habit-btn" class="bg-apple-blue text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-600 transition-colors">
+              Create Your First Habit
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analytics View -->
+      <div id="analytics-view" class="view-content hidden">
+        <div class="max-w-6xl mx-auto p-4 md:p-6">
+          <h1 class="text-3xl font-bold mb-6">Analytics</h1>
+          
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Completion Rate Chart -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm">
+              <h3 class="text-lg font-semibold mb-4">30-Day Completion Rate</h3>
+              <div class="relative h-64">
+                <canvas id="completion-chart"></canvas>
+              </div>
+            </div>
+            
+            <!-- Weekly Progress Chart -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm">
+              <h3 class="text-lg font-semibold mb-4">Last 7 Days</h3>
+              <div class="relative h-64">
+                <canvas id="weekly-chart"></canvas>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Top Habits Chart -->
+          <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm">
+            <h3 class="text-lg font-semibold mb-4">Top 5 Habits by Longest Streak</h3>
+            <div class="relative h-64">
+              <canvas id="streaks-chart"></canvas>
+            </div>
+          </div>
+          
+          <div id="no-analytics-data" class="hidden text-center py-12">
+            <div class="text-6xl mb-4">📊</div>
+            <h3 class="text-xl font-semibold mb-2">Not enough data yet</h3>
+            <p class="text-gray-600 dark:text-gray-400">Complete some habits to see your analytics</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings View -->
+      <div id="settings-view" class="view-content hidden">
+        <div class="max-w-2xl mx-auto p-4 md:p-6">
+          <h1 class="text-3xl font-bold mb-6">Settings</h1>
+          
+          <!-- Appearance -->
+          <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm mb-6">
+            <h3 class="text-lg font-semibold mb-4">Appearance</h3>
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-medium">Dark Mode</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">Switch between light and dark themes</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="dark-mode-toggle" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-apple-blue"></div>
+              </label>
+            </div>
+          </div>
+          
+          <!-- Data Management -->
+          <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm mb-6">
+            <h3 class="text-lg font-semibold mb-4">Data Management</h3>
+            <div class="space-y-4">
+              <button id="export-data-btn" class="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors">
+                <div class="flex items-center">
+                  <svg class="w-5 h-5 mr-3 text-apple-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  <div class="text-left">
+                    <p class="font-medium">Export Data</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Download your habits as JSON</p>
+                  </div>
+                </div>
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </button>
+              
+              <button id="import-data-btn" class="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors">
+                <div class="flex items-center">
+                  <svg class="w-5 h-5 mr-3 text-apple-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                  </svg>
+                  <div class="text-left">
+                    <p class="font-medium">Import Data</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Restore from JSON backup</p>
+                  </div>
+                </div>
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Danger Zone -->
+          <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6">
+            <h3 class="text-lg font-semibold text-red-800 dark:text-red-400 mb-4">Danger Zone</h3>
+            <button id="delete-all-data-btn" class="w-full flex items-center justify-center p-4 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+              Delete All Data
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Mobile Bottom Navigation (hidden on desktop) -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 z-50">
+      <div class="grid grid-cols-4 h-16">
+        <button class="mobile-nav-btn flex flex-col items-center justify-center space-y-1 text-apple-blue" data-view="home">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+          </svg>
+          <span class="text-xs font-medium">Home</span>
+        </button>
+        <button class="mobile-nav-btn flex flex-col items-center justify-center space-y-1 text-gray-400" data-view="habits">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+          </svg>
+          <span class="text-xs font-medium">Habits</span>
+        </button>
+        <button class="mobile-nav-btn flex flex-col items-center justify-center space-y-1 text-gray-400" data-view="analytics">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+          <span class="text-xs font-medium">Analytics</span>
+        </button>
+        <button class="mobile-nav-btn flex flex-col items-center justify-center space-y-1 text-gray-400" data-view="settings">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+          <span class="text-xs font-medium">Settings</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Modals -->
+  
+  <!-- Add/Edit Habit Modal -->
+  <div id="habit-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden z-50 overflow-y-auto">
+    <div class="min-h-full flex items-center justify-center p-4">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md bounce-in my-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
+          <div class="p-4 sm:p-6">
+            <div class="flex justify-between items-center mb-4 sm:mb-6">
+              <h3 id="habit-modal-title" class="text-lg sm:text-xl font-semibold">Add New Habit</h3>
+              <button id="close-habit-modal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+        
+        <form id="habit-form" class="space-y-4">
+          <div>
+            <label for="habit-name" class="block text-sm font-medium mb-2">Habit Name</label>
+            <input type="text" id="habit-name" name="habitName" required 
+                   class="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-apple-blue focus:border-transparent bg-white dark:bg-slate-700 transition-colors"
+                   placeholder="e.g., Drink 8 glasses of water">
+          </div>
+          
+          <div>
+            <label for="habit-description" class="block text-sm font-medium mb-2">Description (Optional)</label>
+            <textarea id="habit-description" name="habitDescription" rows="2"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-apple-blue focus:border-transparent bg-white dark:bg-slate-700 transition-colors resize-none text-sm"
+                      placeholder="Add details about your habit..."></textarea>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-2">Schedule Type</label>
+            <div class="space-y-2">
+              <label class="flex items-center p-2 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                <input type="radio" name="scheduleType" value="weekly" class="mr-2 text-apple-blue focus:ring-apple-blue" checked>
+                <div>
+                  <div class="font-medium text-sm">Weekly Schedule</div>
+                  <div class="text-xs text-gray-600 dark:text-gray-400">Specific days of the week</div>
+                </div>
+              </label>
+              <label class="flex items-center p-2 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                <input type="radio" name="scheduleType" value="daily" class="mr-2 text-apple-blue focus:ring-apple-blue">
+                <div>
+                  <div class="font-medium text-sm">Daily</div>
+                  <div class="text-xs text-gray-600 dark:text-gray-400">Every day without exception</div>
+                </div>
+              </label>
+              <label class="flex items-center p-2 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                <input type="radio" name="scheduleType" value="interval" class="mr-2 text-apple-blue focus:ring-apple-blue">
+                <div>
+                  <div class="font-medium text-sm">Every X Days</div>
+                  <div class="text-xs text-gray-600 dark:text-gray-400">Repeat every few days</div>
+                </div>
+              </label>
+            </div>
+          </div>
+          
+          <!-- Weekly Schedule Options -->
+          <div id="weekly-schedule" class="schedule-option">
+            <label class="block text-sm font-medium mb-2">Days of the Week</label>
+            <div class="grid grid-cols-7 gap-1">
+              <label class="flex flex-col items-center p-2 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                <input type="checkbox" name="days" value="0" class="sr-only peer">
+                <span class="text-xs font-medium peer-checked:text-apple-blue">Sun</span>
+                <div class="w-3 h-3 mt-1 border-2 border-gray-300 dark:border-slate-600 rounded-full peer-checked:border-apple-blue peer-checked:bg-apple-blue"></div>
+              </label>
+              <label class="flex flex-col items-center p-2 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                <input type="checkbox" name="days" value="1" class="sr-only peer">
+                <span class="text-xs font-medium peer-checked:text-apple-blue">Mon</span>
+                <div class="w-3 h-3 mt-1 border-2 border-gray-300 dark:border-slate-600 rounded-full peer-checked:border-apple-blue peer-checked:bg-apple-blue"></div>
+              </label>
+              <label class="flex flex-col items-center p-2 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                <input type="checkbox" name="days" value="2" class="sr-only peer">
+                <span class="text-xs font-medium peer-checked:text-apple-blue">Tue</span>
+                <div class="w-3 h-3 mt-1 border-2 border-gray-300 dark:border-slate-600 rounded-full peer-checked:border-apple-blue peer-checked:bg-apple-blue"></div>
+              </label>
+              <label class="flex flex-col items-center p-2 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                <input type="checkbox" name="days" value="3" class="sr-only peer">
+                <span class="text-xs font-medium peer-checked:text-apple-blue">Wed</span>
+                <div class="w-3 h-3 mt-1 border-2 border-gray-300 dark:border-slate-600 rounded-full peer-checked:border-apple-blue peer-checked:bg-apple-blue"></div>
+              </label>
+              <label class="flex flex-col items-center p-2 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                <input type="checkbox" name="days" value="4" class="sr-only peer">
+                <span class="text-xs font-medium peer-checked:text-apple-blue">Thu</span>
+                <div class="w-3 h-3 mt-1 border-2 border-gray-300 dark:border-slate-600 rounded-full peer-checked:border-apple-blue peer-checked:bg-apple-blue"></div>
+              </label>
+              <label class="flex flex-col items-center p-2 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                <input type="checkbox" name="days" value="5" class="sr-only peer">
+                <span class="text-xs font-medium peer-checked:text-apple-blue">Fri</span>
+                <div class="w-3 h-3 mt-1 border-2 border-gray-300 dark:border-slate-600 rounded-full peer-checked:border-apple-blue peer-checked:bg-apple-blue"></div>
+              </label>
+              <label class="flex flex-col items-center p-2 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                <input type="checkbox" name="days" value="6" class="sr-only peer">
+                <span class="text-xs font-medium peer-checked:text-apple-blue">Sat</span>
+                <div class="w-3 h-3 mt-1 border-2 border-gray-300 dark:border-slate-600 rounded-full peer-checked:border-apple-blue peer-checked:bg-apple-blue"></div>
+              </label>
+            </div>
+          </div>
+          
+          <!-- Daily Schedule Options -->
+          <div id="daily-schedule" class="schedule-option hidden">
+            <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div class="text-green-800 dark:text-green-400 font-medium text-sm">Every Day</div>
+              <div class="text-xs text-green-600 dark:text-green-500 mt-1">This habit will be scheduled daily</div>
+            </div>
+          </div>
+          
+          <!-- Interval Schedule Options -->
+          <div id="interval-schedule" class="schedule-option hidden">
+            <label class="block text-sm font-medium mb-2">Repeat Every</label>
+            <div class="flex items-center space-x-2">
+              <input type="number" id="interval-days" name="intervalDays" min="1" max="30" value="3"
+                     class="w-16 px-2 py-1 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-apple-blue focus:border-transparent bg-white dark:bg-slate-700 transition-colors text-center text-sm">
+              <span class="text-gray-600 dark:text-gray-400 text-sm">days</span>
+            </div>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mt-2">
+              Repeats every <span id="interval-preview">3</span> days from today
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-2">Time (Optional)</label>
+            <div class="flex items-center space-x-2">
+              <input type="time" id="habit-time" name="habitTime"
+                     class="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-apple-blue focus:border-transparent bg-white dark:bg-slate-700 transition-colors text-sm">
+              <span class="text-xs text-gray-600 dark:text-gray-400">Set reminder time</span>
+            </div>
+          </div>
+          
+          <div class="flex space-x-3 pt-4">
+            <button type="button" id="cancel-habit-btn" class="flex-1 px-4 py-3 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" class="flex-1 px-4 py-3 bg-apple-blue text-white rounded-xl hover:bg-blue-600 transition-colors">
+              <span id="habit-submit-text">Add Habit</span>
+            </button>
+          </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <!-- Confirmation Modal -->
+  <div id="confirmation-modal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm bounce-in">
+      <div class="p-6">
+        <div class="text-center">
+          <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+            <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-medium mb-2" id="confirmation-title">Confirm Action</h3>
+          <p class="text-gray-600 dark:text-gray-400 mb-6" id="confirmation-message">Are you sure you want to proceed?</p>
+          <div class="flex space-x-3">
+            <button id="confirmation-cancel" class="flex-1 px-4 py-2 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+              Cancel
+            </button>
+            <button id="confirmation-confirm" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors">
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- File Input for Import (hidden) -->
+  <input type="file" id="file-input" accept=".json" style="display: none;">
+
+  <script src="/src/main.js"></script>
+  
+  <script>
+    // Handle schedule type switching
+    document.addEventListener('DOMContentLoaded', () => {
+      const scheduleRadios = document.querySelectorAll('input[name="scheduleType"]');
+      const scheduleOptions = document.querySelectorAll('.schedule-option');
+      const intervalInput = document.getElementById('interval-days');
+      const intervalPreview = document.getElementById('interval-preview');
+      
+      function updateScheduleDisplay() {
+        const selectedType = document.querySelector('input[name="scheduleType"]:checked').value;
+        
+        scheduleOptions.forEach(option => {
+          option.classList.add('hidden');
+        });
+        
+        document.getElementById(`${selectedType}-schedule`).classList.remove('hidden');
+      }
+      
+      scheduleRadios.forEach(radio => {
+        radio.addEventListener('change', updateScheduleDisplay);
+      });
+      
+      if (intervalInput) {
+        intervalInput.addEventListener('input', (e) => {
+          intervalPreview.textContent = e.target.value;
+        });
+      }
+      
+      // Initialize display
+      updateScheduleDisplay();
+    });
+  </script>
+</body>
+</html>
